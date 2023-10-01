@@ -76,7 +76,7 @@ export class GenerateCommentService {
       }
 
       transformedResponses = splitByInitialIdentifier.map(
-        (generatedComment) => `/** ${generatedComment.split("*/")[0]} */`
+        (generatedComment) => `/** ${generatedComment.split("*/")[0]}*/`
       );
       console.log("transformedResponses", transformedResponses);
     }
