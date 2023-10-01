@@ -5,7 +5,11 @@ export default {
     functionCodes: {
       type: "array",
       items: {
-        type: "string",
+        type: "object",
+        properties: {
+          functionName: { type: "string" },
+          functionCode: { type: "string" },
+        },
       },
     },
   },
