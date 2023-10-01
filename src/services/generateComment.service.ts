@@ -14,20 +14,32 @@ export class GenerateCommentService {
     functionCodes: FunctionDetails[]
   ): Promise<GenerateCommentResponse[]> {
     let generatedCommentResponses: GenerateCommentResponse[] = [];
-    for (let functionCode of functionCodes) {
-      const prompt = this.generatePrompt(language, functionCode);
-      const generatedCommentResponse = await this.callAnthropic(prompt);
+    let prompt: string = this.generatePrompt(language, functionCodes);
+
+    const generatedCommentResponse = await this.callAnthropic(prompt);
+    console.log("generatedCommentResponse", generatedCommentResponse);
+    const transformedResponses = this.transformResponse(
+      generatedCommentResponse
+    );
+    transformedResponses.forEach((generatedComment, index) => {
       generatedCommentResponses.push({
-        functionName: functionCode.functionName,
-        generatedComment: generatedCommentResponse?.completion || "",
+        functionName: functionCodes[index].functionName,
+        generatedComment: generatedComment,
       });
-    }
+    });
     return generatedCommentResponses;
   }
 
-  private generatePrompt(language: string, functionDetails: FunctionDetails) {
+  private generatePrompt(language: string, functionDetails: FunctionDetails[]) {
+    const functionCodes = functionDetails.map(
+      (functionDetails) => functionDetails.functionCode
+    );
+    let functionCodeForPrompt = functionCodes.reduce(
+      (prevValue, currValue) => `${prevValue}${currValue}`,
+      ""
+    );
     if (language === "TypeScript")
-      return `Human: ${PROMPT_TEXTS.TypeScript} ${functionDetails.functionCode} Assistant:`;
+      return `Human: ${PROMPT_TEXTS.TypeScriptBatch} ${functionCodeForPrompt} Assistant:`;
     else throw new Error("Language not supported");
   }
 
@@ -48,22 +60,27 @@ export class GenerateCommentService {
 
     let parsedResponse = JSON.parse(convertedResponse);
     // remove extra text from response other than generated comment
-    parsedResponse = this.transformResponse(parsedResponse);
-    return parsedResponse;
+    // parsedResponse = this.transformResponse(parsedResponse);
+    return parsedResponse?.completion || parsedResponse;
   }
 
   // remove extra text from response other than generated comment
-  private transformResponse(parsedResponse: any) {
-    if (parsedResponse?.completion) {
-      const splitByInitialIdentifier = parsedResponse?.completion.split("/**");
-      if (splitByInitialIdentifier?.length > 1) {
-        const splitByEndIdentifier = splitByInitialIdentifier[1]?.split("*/");
-        if (splitByEndIdentifier?.length > 0) {
-          parsedResponse.completion = `/** ${splitByEndIdentifier[0]}*/`;
-          console.log("formatted response", parsedResponse.completion);
-        }
+  private transformResponse(response: string) {
+    let transformedResponses: string[];
+    const splitByInitialIdentifier = response.split("/**");
+    if (splitByInitialIdentifier?.length > 0) {
+      const checkFirstElementIsJsDoc =
+        splitByInitialIdentifier[0].includes("*/");
+      if (!checkFirstElementIsJsDoc) {
+        splitByInitialIdentifier.splice(0, 1);
       }
+
+      transformedResponses = splitByInitialIdentifier.map(
+        (generatedComment) => `/** ${generatedComment.split("*/")[0]} */`
+      );
+      console.log("transformedResponses", transformedResponses);
     }
-    return parsedResponse;
+
+    return transformedResponses;
   }
 }
