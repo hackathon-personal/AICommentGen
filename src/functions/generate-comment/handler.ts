@@ -24,7 +24,7 @@ const handler: ValidatedEventAPIGatewayProxyEvent<typeof schema> = async (
       throw new Error("No function codes provided");
     }
 
-    let generatedCommentResponses: GenerateCommentResponse[] = [];
+    let generatedCommentResponses: GenerateCommentResponse = {};
     generatedCommentResponses = await generatedCommentService.generateComment(
       language,
       generateCommentRequest.functionCodes

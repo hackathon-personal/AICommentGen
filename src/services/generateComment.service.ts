@@ -1,4 +1,10 @@
 import { getAnthropicRequestBody } from "@libs/anthropic";
+import {
+  APPLICATION_CONSTANTS,
+  BED_ROCK_RUNTIME,
+  SUPPORTED_LANGUAGES,
+} from "@libs/constants/application.constants";
+import { ERROR_MESSAGES } from "@libs/constants/errors.constants";
 import { PROMPT_TEXTS } from "@libs/constants/prompt-texts";
 import {
   FunctionDetails,
@@ -12,8 +18,9 @@ export class GenerateCommentService {
   public async generateComment(
     language: string,
     functionCodes: FunctionDetails[]
-  ): Promise<GenerateCommentResponse[]> {
-    let generatedCommentResponses: GenerateCommentResponse[] = [];
+  ): Promise<GenerateCommentResponse> {
+    let generatedCommentResponses: GenerateCommentResponse = {};
+
     let prompt: string = this.generatePrompt(language, functionCodes);
 
     const generatedCommentResponse = await this.callAnthropic(prompt);
@@ -21,11 +28,13 @@ export class GenerateCommentService {
     const transformedResponses = this.transformResponse(
       generatedCommentResponse
     );
+    if (functionCodes.length == 1) {
+      transformedResponses.splice(1);
+    }
+
     transformedResponses.forEach((generatedComment, index) => {
-      generatedCommentResponses.push({
-        functionName: functionCodes[index].functionName,
-        generatedComment: generatedComment,
-      });
+      generatedCommentResponses[functionCodes[index].functionName] =
+        generatedComment;
     });
     return generatedCommentResponses;
   }
@@ -38,9 +47,13 @@ export class GenerateCommentService {
       (prevValue, currValue) => `${prevValue}${currValue}`,
       ""
     );
-    if (language === "TypeScript")
-      return `Human: ${PROMPT_TEXTS.TypeScriptBatch} ${functionCodeForPrompt} Assistant:`;
-    else throw new Error("Language not supported");
+    if (language === SUPPORTED_LANGUAGES.TypeScript)
+      return `${APPLICATION_CONSTANTS.Anthropic.HUMAN} ${
+        functionDetails.length > 1
+          ? PROMPT_TEXTS.TypeScriptBatch
+          : PROMPT_TEXTS.TypeScript
+      } ${functionCodeForPrompt} ${APPLICATION_CONSTANTS.Anthropic.ASSISTANT}`;
+    else throw new Error(ERROR_MESSAGES.LANGUAGE_NOT_SUPPORTED);
   }
 
   private async callAnthropic(prompt: string) {
@@ -48,8 +61,8 @@ export class GenerateCommentService {
     console.log("anthropicRequestParams", anthropicRequestParams);
 
     const bedrockRuntime = new AWS.BedrockRuntime({
-      region: "us-east-1",
-      apiVersion: "2023-09-30",
+      region: BED_ROCK_RUNTIME.REGION,
+      apiVersion: BED_ROCK_RUNTIME.API_VERSION,
     });
 
     const bedrockRuntimeResponse = await bedrockRuntime

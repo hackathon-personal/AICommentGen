@@ -9,6 +9,5 @@ export interface FunctionDetails {
 }
 
 export interface GenerateCommentResponse {
-  functionName: string;
-  generatedComment: string;
+  [key: string]: string;
 }
